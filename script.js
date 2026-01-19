@@ -71,6 +71,12 @@ function startBreathing() {
     const text = document.getElementById('breathingText');
     
     if (breathingActive) {
+        text.textContent = 'Exercise in progress...';
+        setTimeout(() => {
+            if (!breathingActive) {
+                text.textContent = 'Click to Start';
+            }
+        }, 2000);
         return;
     }
     
