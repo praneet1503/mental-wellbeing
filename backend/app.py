@@ -4,7 +4,7 @@ from api import web_app
 # Create a Modal image using debian_slim and install dependencies
 image = (
     modal.Image.debian_slim()
-    .pip_install_from_requirements("requirements.txt")
+    .pip_install("fastapi", "uvicorn")
 )
 
 # App definition
