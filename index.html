@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mental Wellbeing - Your Path to Inner Peace</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="logo">
+                <h1>🧠 Mental Wellbeing</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#mood-tracker">Mood Tracker</a></li>
+                <li><a href="#resources">Resources</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section id="home" class="hero">
+            <div class="hero-content">
+                <h2>Take Care of Your Mental Health</h2>
+                <p>Your journey to better mental wellbeing starts here</p>
+                <button class="cta-button" onclick="scrollToMoodTracker()">Start Your Journey</button>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features" class="features">
+            <h2>How We Can Help</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🧘</div>
+                    <h3>Meditation & Mindfulness</h3>
+                    <p>Guided meditation sessions to help you find inner peace and reduce stress</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Mood Tracking</h3>
+                    <p>Track your daily mood and emotions to understand patterns in your mental health</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💬</div>
+                    <h3>Support Community</h3>
+                    <p>Connect with others on similar journeys and share experiences</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📚</div>
+                    <h3>Educational Resources</h3>
+                    <p>Learn about mental health topics and coping strategies</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Breathing Exercise Section -->
+        <section class="breathing-exercise">
+            <h2>Take a Moment to Breathe</h2>
+            <div class="breathing-circle" id="breathingCircle">
+                <p id="breathingText">Click to Start</p>
+            </div>
+            <button class="exercise-button" onclick="startBreathing()">Start Breathing Exercise</button>
+        </section>
+
+        <!-- Daily Quote Section -->
+        <section class="daily-quote">
+            <h2>Daily Inspiration</h2>
+            <div class="quote-container">
+                <p class="quote-text" id="quoteText">"The greatest glory in living lies not in never falling, but in rising every time we fall."</p>
+                <p class="quote-author">- Nelson Mandela</p>
+                <button class="quote-button" onclick="getNewQuote()">Get New Quote</button>
+            </div>
+        </section>
+
+        <!-- Mood Tracker Section -->
+        <section id="mood-tracker" class="mood-tracker">
+            <h2>How Are You Feeling Today?</h2>
+            <div class="mood-options">
+                <div class="mood-item" onclick="selectMood('great')">
+                    <div class="mood-emoji">😄</div>
+                    <p>Great</p>
+                </div>
+                <div class="mood-item" onclick="selectMood('good')">
+                    <div class="mood-emoji">🙂</div>
+                    <p>Good</p>
+                </div>
+                <div class="mood-item" onclick="selectMood('okay')">
+                    <div class="mood-emoji">😐</div>
+                    <p>Okay</p>
+                </div>
+                <div class="mood-item" onclick="selectMood('bad')">
+                    <div class="mood-emoji">😕</div>
+                    <p>Not Good</p>
+                </div>
+                <div class="mood-item" onclick="selectMood('terrible')">
+                    <div class="mood-emoji">😢</div>
+                    <p>Terrible</p>
+                </div>
+            </div>
+            <div id="moodMessage" class="mood-message"></div>
+        </section>
+
+        <!-- Resources Section -->
+        <section id="resources" class="resources">
+            <h2>Helpful Resources</h2>
+            <div class="resources-grid">
+                <div class="resource-card">
+                    <h3>Crisis Hotlines</h3>
+                    <p>If you're in crisis, help is available 24/7</p>
+                    <ul>
+                        <li>National Suicide Prevention Lifeline: 988</li>
+                        <li>Crisis Text Line: Text HOME to 741741</li>
+                    </ul>
+                </div>
+                <div class="resource-card">
+                    <h3>Mental Health Apps</h3>
+                    <p>Recommended apps for mental wellbeing</p>
+                    <ul>
+                        <li>Headspace - Meditation & Sleep</li>
+                        <li>Calm - Sleep & Relaxation</li>
+                        <li>BetterHelp - Online Therapy</li>
+                    </ul>
+                </div>
+                <div class="resource-card">
+                    <h3>Self-Care Tips</h3>
+                    <p>Simple ways to improve your mental health</p>
+                    <ul>
+                        <li>Get regular exercise</li>
+                        <li>Maintain a sleep schedule</li>
+                        <li>Practice mindfulness</li>
+                        <li>Connect with loved ones</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <p>&copy; 2024 Mental Wellbeing. All rights reserved.</p>
+            <p>Remember: This is not a substitute for professional medical advice. If you're experiencing a mental health crisis, please seek professional help.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
