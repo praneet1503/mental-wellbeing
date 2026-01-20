@@ -1,36 +1,36 @@
 # Mental Wellbeing
 
-A simple website dedicated to mental health and wellbeing, providing resources, tools, and support for better mental health.
+AI-powered mental wellbeing app with a Next.js frontend and FastAPI backend.
 
-## Features
+## Structure
+- /frontend: Next.js web application
+- /backend: FastAPI service (SambaNova LLM)
 
-- 🧘 **Meditation & Mindfulness**: Guided breathing exercises to help reduce stress
-- 📊 **Mood Tracking**: Track your daily emotions and feelings
-- 💬 **Support Resources**: Access to crisis hotlines and mental health resources
-- 📚 **Educational Content**: Learn about mental health and coping strategies
-- 💭 **Daily Inspiration**: Motivational quotes to uplift your spirits
+## Local Development
 
-## Getting Started
+### Backend
+1. cd backend
+2. Create .env.local (see .env.example)
+3. pip install -r requirements.txt
+4. uvicorn app.main:app --reload
 
-Simply open `index.html` in your web browser to start using the application.
+### Frontend
+1. cd frontend
+2. npm install
+3. npm run dev
 
-## Usage
+## Deployment
 
-1. Navigate through different sections using the navigation bar
-2. Try the breathing exercise to help calm your mind
-3. Track your mood by selecting how you're feeling today
-4. Explore helpful resources and crisis hotlines if needed
-5. Get inspired with daily motivational quotes
+### Frontend (Vercel)
+1. Push the repository to GitHub.
+2. In Vercel, import the repository.
+3. Set the **Root Directory** to frontend.
+4. Add NEXT_PUBLIC_API_BASE to Environment Variables pointing to your production backend.
+
+### Backend
+Deploy the FastAPI app to a service like Render, Railway, or Fly.io.
+
+---
 
 ## Important Note
-
 This website is for informational and wellness purposes only. It is not a substitute for professional medical advice, diagnosis, or treatment. If you're experiencing a mental health crisis, please seek professional help immediately.
-
-### Crisis Resources
-
-- **National Suicide Prevention Lifeline**: 988
-- **Crisis Text Line**: Text HOME to 741741
-
-## Future Development
-
-This is a dummy/prototype website that will be enhanced with additional features in the future.

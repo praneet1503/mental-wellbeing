@@ -45,4 +45,23 @@ yarn-error.log*
 next-env.d.ts
 .history
 
-/backend
+/backend/
+/backend/node_modules
+/backend/.env
+/backend/.env.local
+/backend/.env.*.local
+/backend/.next
+/backend/dist
+/backend/build
+/backend/.vercel
+/backend/.vercel_build_output
+/backend/tsconfig.tsbuildinfo
+/backend/.history
+/backend/npm-debug.log*
+/backend/yarn-debug.log*
+/backend/yarn-error.log*
+/backend/pnpm-debug.log*
+/backend/.DS_Store
+
+
+/frontend/node_modules
