@@ -1,8 +1,9 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from "../components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
+import { useState } from "react";
+import Link from "next/link";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { 
   Brain, 
   Wind, 
@@ -15,7 +16,7 @@ import {
   BookOpen, 
   Users,
   Menu
-} from 'lucide-react';
+} from "lucide-react";
 
 const quotes = [
     {
@@ -177,10 +178,11 @@ export default function Home() {
                         </span>
                     </div>
                     <nav className="hidden md:flex gap-6">
-                        <Button variant="ghost" onClick={() => scrollToSection('home')}>Home</Button>
-                        <Button variant="ghost" onClick={() => scrollToSection('features')}>Features</Button>
-                        <Button variant="ghost" onClick={() => scrollToSection('mood-tracker')}>Mood Tracker</Button>
-                        <Button variant="ghost" onClick={() => scrollToSection('resources')}>Resources</Button>
+                        <Button variant="ghost" onClick={() => scrollToSection("home")}>Home</Button>
+                        <Button variant="ghost" onClick={() => scrollToSection("features")}>Features</Button>
+                        <Button variant="ghost" onClick={() => scrollToSection("mood-tracker")}>Mood Tracker</Button>
+                        <Button variant="ghost" onClick={() => scrollToSection("resources")}>Resources</Button>
+                        <Link href="/chat" className="text-sm text-slate-600 hover:text-slate-900">Chat</Link>
                     </nav>
                      {/* Mobile Menu Button - simplified */}
                      <Button variant="ghost" size="icon" className="md:hidden">
@@ -199,9 +201,14 @@ export default function Home() {
                         <p className="text-xl text-slate-600 dark:text-slate-300 mb-8 max-w-2xl mx-auto">
                             Your journey to better mental wellbeing starts here. Discover tools and resources to help you thrive.
                         </p>
-                        <Button size="lg" className="rounded-full text-lg px-8 shadow-lg hover:shadow-xl transition-all" onClick={() => scrollToSection('mood-tracker')}>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                            <Button size="lg" className="rounded-full text-lg px-8 shadow-lg hover:shadow-xl transition-all" onClick={() => scrollToSection("mood-tracker")}>
                             Start Your Journey
-                        </Button>
+                            </Button>
+                            <Link href="/chat" className="text-sm font-semibold text-primary hover:underline">
+                                Try the chat
+                            </Link>
+                        </div>
                     </div>
                 </section>
 
