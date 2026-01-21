@@ -21,7 +21,10 @@ export default function ChatPage() {
   useEffect(() => {
     const loadModels = async () => {
       try {
-        const response = await fetch(`${API_BASE}/models`);
+        const token = localStorage.getItem('echomind_token');
+        const response = await fetch(`${API_BASE}/models`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         if (!response.ok) {
           throw new Error('Failed to load models');
         }
@@ -47,14 +50,23 @@ export default function ChatPage() {
     setReply('');
 
     try {
+      const token = localStorage.getItem('echomind_token');
       const response = await fetch(`${API_BASE}/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           message,
           model: selectedModel || undefined,
         }),
       });
+
+      if (response.status === 429) {
+        setError('You have reached your usage limit');
+        return;
+      }
 
       if (!response.ok) {
         throw new Error('Chat request failed');
