@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../../lib/firebase';
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
@@ -11,12 +14,24 @@ import { Textarea } from "../../components/ui/textarea";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000';
 
 export default function ChatPage() {
+  const router = useRouter();
   const [models, setModels] = useState([]);
   const [selectedModel, setSelectedModel] = useState('');
   const [message, setMessage] = useState('');
   const [reply, setReply] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        router.replace('/login');
+        return;
+      }
+    });
+
+    return unsubscribe;
+  }, [router]);
 
   useEffect(() => {
     const loadModels = async () => {
