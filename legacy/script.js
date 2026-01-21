@@ -1,4 +1,4 @@
-// Inspirational quotes for mental wellbeing
+// Inspirational quotes for EchoMind
 const quotes = [
     {
         text: "The greatest glory in living lies not in never falling, but in rising every time we fall.",

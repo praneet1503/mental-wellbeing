@@ -174,7 +174,7 @@ export default function Home() {
                     <div className="flex items-center gap-2">
                         <Brain className="h-6 w-6 text-primary" />
                         <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
-                            Mental Wellbeing
+                            EchoMind
                         </span>
                     </div>
                     <nav className="hidden md:flex gap-6">
@@ -199,7 +199,7 @@ export default function Home() {
                             Take Care of Your <span className="text-primary">Mental Health</span>
                         </h1>
                         <p className="text-xl text-slate-600 dark:text-slate-300 mb-8 max-w-2xl mx-auto">
-                            Your journey to better mental wellbeing starts here. Discover tools and resources to help you thrive.
+                            Your journey to EchoMind starts here. Discover tools and resources to help you thrive.
                         </p>
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             <Button size="lg" className="rounded-full text-lg px-8 shadow-lg hover:shadow-xl transition-all" onClick={() => scrollToSection("mood-tracker")}>
@@ -354,7 +354,7 @@ export default function Home() {
                             <div>
                                 <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
                                     <Brain className="h-6 w-6 text-primary-foreground" />
-                                    <span className="text-xl font-bold text-white">Mental Wellbeing</span>
+                                    <span className="text-xl font-bold text-white">EchoMind</span>
                                 </div>
                                 <p className="text-sm">Dedication to improving mental health awareness and providing accessible tools for everyone.</p>
                             </div>
@@ -373,7 +373,7 @@ export default function Home() {
                             </div>
                         </div>
                         <div className="border-t border-slate-800 mt-8 pt-8 text-center text-sm">
-                            <p>© 2026 Mental Wellbeing. All rights reserved.</p>
+                            <p>© 2026 EchoMind. All rights reserved.</p>
                         </div>
                      </div>
                 </footer>

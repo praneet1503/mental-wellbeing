@@ -1,6 +1,6 @@
-# Mental Wellbeing
+# EchoMind
 
-AI-powered mental wellbeing app with a Next.js frontend and FastAPI backend.
+AI-powered EchoMind app with a Next.js frontend and FastAPI backend.
 
 ## Structure
 - /frontend: Next.js web application
