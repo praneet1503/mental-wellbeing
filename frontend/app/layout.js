@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Mental Wellbeing - Your Path to Inner Peace",
+  title: "EchoMind - Your Path to Inner Peace",
   description: "Your journey to better mental wellbeing starts here",
 };
 
