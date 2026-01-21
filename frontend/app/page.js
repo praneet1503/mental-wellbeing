@@ -183,6 +183,8 @@ export default function Home() {
                         <Button variant="ghost" onClick={() => scrollToSection("mood-tracker")}>Mood Tracker</Button>
                         <Button variant="ghost" onClick={() => scrollToSection("resources")}>Resources</Button>
                         <Link href="/chat" className="text-sm text-slate-600 hover:text-slate-900">Chat</Link>
+                        <Link href="/login" className="text-sm text-slate-600 hover:text-slate-900">Log in</Link>
+                        <Link href="/account" className="text-sm text-slate-600 hover:text-slate-900">Account</Link>
                     </nav>
                      {/* Mobile Menu Button - simplified */}
                      <Button variant="ghost" size="icon" className="md:hidden">
@@ -264,10 +266,11 @@ export default function Home() {
                         <div className="flex flex-col items-center justify-center">
                             <div 
                                 onClick={startBreathing}
+                                style={{ transitionDuration: '4000ms' }}
                                 className={`
                                     w-64 h-64 rounded-full bg-gradient-to-br from-blue-200 to-purple-200 
                                     flex items-center justify-center cursor-pointer shadow-xl mb-12
-                                    transition-all duration-[4000ms] ease-in-out
+                                    transition-all ease-in-out
                                     ${breathingPhase === 'inhale' ? 'scale-125 bg-blue-300' : 
                                       breathingPhase === 'exhale' ? 'scale-90 bg-purple-300' : 'scale-100'}
                                     hover:shadow-2xl hover:scale-105 active:scale-95
