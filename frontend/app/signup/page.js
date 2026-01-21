@@ -12,6 +12,7 @@ import { Input } from "../../components/ui/input";
 
 export default function SignupPage() {
   const router = useRouter();
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -32,13 +33,37 @@ export default function SignupPage() {
     setError("");
     setLoading(true);
 
+    if (!username.trim()) {
+      setError("Username is required.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
       const token = await credential.user.getIdToken();
-      if (username.trim()) {
-        localStorage.setItem("echomind_username", username.trim());
-      }
       localStorage.setItem("echomind_token", token);
+
+      const response = await fetch(`${API_BASE}/users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          username: username.trim().toLowerCase(),
+        }),
+      });
+
+      if (response.status === 409) {
+        setError("Username already taken.");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Profile creation failed");
+      }
+
       router.replace("/account");
     } catch (err) {
       if (err?.code === "auth/email-already-in-use") {

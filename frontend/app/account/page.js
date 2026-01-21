@@ -25,32 +25,30 @@ export default function AccountPage() {
         return;
       }
 
-      setEmail(user.email || "");
-      setJoined(user.metadata?.creationTime || "");
-      setUsername(localStorage.getItem("echomind_username") || "");
-
       try {
         const token = await user.getIdToken();
         localStorage.setItem("echomind_token", token);
-
-        const response = await fetch(`${API_BASE}/usage`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        const response = await fetch(`${API_BASE}/me`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (response.status === 429) {
-          setQuotaError("You have reached your usage limit");
+        if (response.status === 404) {
+          router.replace("/complete-profile");
           return;
         }
 
-        if (response.ok) {
-          const data = await response.json();
-          setQuota({
-            used: Number(data.used) || 0,
-            limit: Number(data.limit) || 25,
-          });
+        if (!response.ok) {
+          throw new Error("Unable to load profile");
         }
+
+        const data = await response.json();
+        setEmail(data.email || "");
+        setUsername(data.username || "");
+        setJoined(data.created_at || "");
+        setQuota({
+          used: Number(data.quota_used) || 0,
+          limit: Number(data.quota_limit) || 25,
+        });
       } catch (err) {
         setQuotaError("Unable to load quota.");
       }

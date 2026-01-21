@@ -25,6 +25,11 @@ export default function ChatPage() {
         const response = await fetch(`${API_BASE}/models`, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
+        if (response.status === 401) {
+          setError('Please log in to load models.');
+          return;
+        }
+
         if (!response.ok) {
           throw new Error('Failed to load models');
         }
@@ -62,6 +67,11 @@ export default function ChatPage() {
           model: selectedModel || undefined,
         }),
       });
+
+      if (response.status === 401) {
+        setError('Please log in to chat.');
+        return;
+      }
 
       if (response.status === 429) {
         setError('You have reached your usage limit');

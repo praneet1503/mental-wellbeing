@@ -12,6 +12,7 @@ import { Input } from "../../components/ui/input";
 
 export default function LoginPage() {
   const router = useRouter();
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -35,6 +36,20 @@ export default function LoginPage() {
       const credential = await signInWithEmailAndPassword(auth, email, password);
       const token = await credential.user.getIdToken();
       localStorage.setItem("echomind_token", token);
+
+      const profileResponse = await fetch(`${API_BASE}/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (profileResponse.status === 404) {
+        router.replace("/complete-profile");
+        return;
+      }
+
+      if (!profileResponse.ok) {
+        throw new Error("Profile check failed");
+      }
+
       router.replace("/account");
     } catch (err) {
       if (err?.code === "auth/wrong-password" || err?.code === "auth/invalid-credential") {
