@@ -92,6 +92,9 @@ export default function AccountPage() {
               </p>
             )}
           </div>
+          <Button onClick={() => router.push("/chat")} className="w-full" variant="secondary">
+            Go to chat
+          </Button>
           <Button onClick={handleLogout} className="w-full">
             Log out
           </Button>

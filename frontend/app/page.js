@@ -1,9 +1,25 @@
 "use client";
 
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+
+import { auth } from "../lib/firebase";
 import { Brain } from "lucide-react";
 
 export default function Home() {
+    const [currentUser, setCurrentUser] = useState(null);
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            setCurrentUser(user);
+        });
+
+        return unsubscribe;
+    }, []);
+
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
             {/* Navbar */}
@@ -16,8 +32,17 @@ export default function Home() {
                         </span>
                     </div>
                     <div className="flex items-center gap-4">
-                        <Link href="/login" className="text-sm text-slate-600 hover:text-slate-900">Log in</Link>
-                        <Link href="/signup" className="text-sm text-slate-600 hover:text-slate-900">Sign up</Link>
+                        {currentUser ? (
+                            <>
+                                <Link href="/account" className="text-sm text-slate-600 hover:text-slate-900">Account</Link>
+                                <Link href="/chat" className="text-sm text-slate-600 hover:text-slate-900">Chat</Link>
+                            </>
+                        ) : (
+                            <>
+                                <Link href="/login" className="text-sm text-slate-600 hover:text-slate-900">Log in</Link>
+                                <Link href="/signup" className="text-sm text-slate-600 hover:text-slate-900">Sign up</Link>
+                            </>
+                        )}
                     </div>
                 </div>
             </header>

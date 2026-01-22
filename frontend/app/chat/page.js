@@ -21,9 +21,12 @@ export default function ChatPage() {
   const [reply, setReply] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
+  const [messagesLeft, setMessagesLeft] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
       if (!user) {
         router.replace('/login');
         return;
@@ -34,7 +37,7 @@ export default function ChatPage() {
   }, [router]);
 
   useEffect(() => {
-    const loadModels = async () => {
+    const loadModelsAndQuota = async () => {
       try {
         const token = localStorage.getItem('echomind_token');
         const response = await fetch(`${API_BASE}/models`, {
@@ -53,12 +56,24 @@ export default function ChatPage() {
         if (Array.isArray(data.models) && data.models.length > 0) {
           setSelectedModel(data.models[0]);
         }
+
+        if (token) {
+          const usageResponse = await fetch(`${API_BASE}/usage`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (usageResponse.ok) {
+            const usageData = await usageResponse.json();
+            const used = Number(usageData.used) || 0;
+            const limit = Number(usageData.limit) || 25;
+            setMessagesLeft(Math.max(limit - used, 0));
+          }
+        }
       } catch (err) {
         setError('Could not load models. Check the backend and API base URL.');
       }
     };
 
-    loadModels();
+    loadModelsAndQuota();
   }, []);
 
   const sendMessage = async () => {
@@ -99,6 +114,9 @@ export default function ChatPage() {
 
       const data = await response.json();
       setReply(data.reply || '');
+      if (messagesLeft !== null) {
+        setMessagesLeft(Math.max(messagesLeft - 1, 0));
+      }
     } catch (err) {
       setError('Unable to get a response. Please try again.');
     } finally {
@@ -113,8 +131,11 @@ export default function ChatPage() {
           <Link href="/" className="text-lg font-semibold">EchoMind</Link>
           <div className="flex items-center gap-4">
             <Link href="/" className="text-sm text-slate-500 hover:text-slate-900">Back to home</Link>
-            <Link href="/login" className="text-sm text-slate-500 hover:text-slate-900">Log in</Link>
-            <Link href="/account" className="text-sm text-slate-500 hover:text-slate-900">Account</Link>
+            {currentUser ? (
+              <Link href="/account" className="text-sm text-slate-500 hover:text-slate-900">Account</Link>
+            ) : (
+              <Link href="/login" className="text-sm text-slate-500 hover:text-slate-900">Log in</Link>
+            )}
           </div>
         </div>
       </header>
@@ -159,6 +180,10 @@ export default function ChatPage() {
               <div className="rounded-lg border border-slate-200 bg-white p-4 text-slate-700">
                 {reply}
               </div>
+            )}
+
+            {messagesLeft !== null && (
+              <p className="text-sm text-slate-500">{messagesLeft} messages left</p>
             )}
           </CardContent>
         </Card>
