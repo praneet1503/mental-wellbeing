@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from functools import lru_cache
 from pathlib import Path
@@ -103,6 +104,13 @@ def run_llm(prompt: str, system_prompt: str, model: str | None = None, action: s
 
 
 fastapi_app = FastAPI(title="EchoMind API")
+
+# Allow Vercel production and preview domains for CORS. This is set before Settings()
+# is instantiated so the CORS middleware can validate these origins.
+# Production: https://mental-wellbeing.vercel.app
+# Previews: https://*.vercel.app (handled by regex in cors.py)
+if "FRONTEND_ORIGIN" not in os.environ:
+    os.environ["FRONTEND_ORIGIN"] = "https://mental-wellbeing.vercel.app"
 
 # CORS uses dynamic origin checks to safely allow Vercel preview URLs and localhost
 # while keeping allow_credentials=True. Wildcard origins are unsafe with credentials
