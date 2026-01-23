@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 
 import { auth } from "../../lib/firebase";
+import { getApiBase } from "../../lib/apiBase";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+const API_BASE = getApiBase();
 
 export default function AccountPage() {
   const router = useRouter();

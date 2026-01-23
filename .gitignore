@@ -66,3 +66,17 @@ next-env.d.ts
 
 /frontend/node_modules
 Echomind Firebase Admin SDK.json
+__pychache__/
+frontend/__pychache__/
+/frontend/.env
+/frontend/.env.local
+/frontend/.env.*.local
+/frontend/.vercel
+/frontend/.vercel_build_output
+
+/frontend/npm-debug.log*
+/frontend/yarn-debug.log*
+/frontend/yarn-error.log*
+__pychache__
+__pycache__/modal_app.cpython-312.pyc
+.gitignore

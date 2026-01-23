@@ -6,13 +6,14 @@ import Link from "next/link";
 import { createUserWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 
 import { auth } from "../../lib/firebase";
+import { getApiBase } from "../../lib/apiBase";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 
 export default function SignupPage() {
   const router = useRouter();
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+  const API_BASE = getApiBase();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");

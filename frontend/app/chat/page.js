@@ -10,8 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Input } from "../../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Textarea } from "../../components/ui/textarea";
+import { getApiBase } from '../../lib/apiBase';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000';
+const API_BASE = getApiBase();
 
 export default function ChatPage() {
   const router = useRouter();
@@ -23,8 +24,11 @@ export default function ChatPage() {
   const [error, setError] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [messagesLeft, setMessagesLeft] = useState(null);
+  const [origin, setOrigin] = useState('');
+  const debugEnabled = process.env.NODE_ENV !== 'production';
 
   useEffect(() => {
+    setOrigin(window.location.origin);
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       if (!user) {
@@ -69,7 +73,12 @@ export default function ChatPage() {
           }
         }
       } catch (err) {
-        setError('Could not load models. Check the backend and API base URL.');
+        const msg = typeof err?.message === 'string' ? err.message : '';
+        if (/Failed to fetch/i.test(msg)) {
+          setError('Network error (often CORS or an HTTP→HTTPS redirect). Verify NEXT_PUBLIC_API_BASE is https and restart `npm run dev`.');
+        } else {
+          setError('Could not load models. Check the backend and API base URL.');
+        }
       }
     };
 
@@ -118,7 +127,12 @@ export default function ChatPage() {
         setMessagesLeft(Math.max(messagesLeft - 1, 0));
       }
     } catch (err) {
-      setError('Unable to get a response. Please try again.');
+      const msg = typeof err?.message === 'string' ? err.message : '';
+      if (/Failed to fetch/i.test(msg)) {
+        setError('Network error (often CORS or an HTTP→HTTPS redirect). Verify NEXT_PUBLIC_API_BASE is https and restart `npm run dev`.');
+      } else {
+        setError('Unable to get a response. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -146,6 +160,14 @@ export default function ChatPage() {
             <CardTitle>Chat</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
+            {debugEnabled && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                <div><span className="font-medium">Debug</span> (dev only)</div>
+                <div suppressHydrationWarning>Origin: {origin}</div>
+                <div>API base: {API_BASE}</div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Model</label>
               <Select value={selectedModel} onValueChange={setSelectedModel}>
