@@ -43,7 +43,6 @@ export default function SignupPage() {
     try {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
       const token = await credential.user.getIdToken();
-      localStorage.setItem("echomind_token", token);
 
       const response = await fetch(`${API_BASE}/users`, {
         method: "POST",

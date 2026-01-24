@@ -7,12 +7,13 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Input } from "../../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Textarea } from "../../components/ui/textarea";
 import { getApiBase } from '../../lib/apiBase';
+import { useUserStore } from "../context/user-context";
 
 const API_BASE = getApiBase();
+const MODELS_CACHE_KEY = "echomind_models";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -23,14 +24,20 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
-  const [messagesLeft, setMessagesLeft] = useState(null);
-  const [origin, setOrigin] = useState('');
-  const debugEnabled = process.env.NODE_ENV !== 'production';
+  const [authChecking, setAuthChecking] = useState(true);
+  const { user, isLoading: userLoading, error: userError, hasFetched, ensureUser } = useUserStore();
 
+  const getAuthToken = async () => {
+    const authUser = auth.currentUser;
+    if (!authUser) {
+      return null;
+    }
+    return authUser.getIdToken();
+  };
   useEffect(() => {
-    setOrigin(window.location.origin);
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
+      setAuthChecking(false);
       if (!user) {
         router.replace('/login');
         return;
@@ -41,37 +48,59 @@ export default function ChatPage() {
   }, [router]);
 
   useEffect(() => {
+    if (!authChecking && currentUser) {
+      ensureUser();
+    }
+  }, [authChecking, currentUser, ensureUser]);
+
+  useEffect(() => {
+    if (userError?.type === "auth") {
+      router.replace('/login');
+    }
+    if (userError?.type === "missing") {
+      router.replace('/complete-profile');
+    }
+  }, [userError, router]);
+
+  useEffect(() => {
     const loadModelsAndQuota = async () => {
       try {
-        const token = localStorage.getItem('echomind_token');
-        const response = await fetch(`${API_BASE}/models`, {
+        const token = await getAuthToken();
+
+        const cachedModels = sessionStorage.getItem(MODELS_CACHE_KEY);
+        if (cachedModels) {
+          const parsed = JSON.parse(cachedModels);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setModels(parsed);
+            setSelectedModel(parsed[0]);
+          }
+        }
+
+        if (cachedModels) {
+          return;
+        }
+
+        const modelsResponse = await fetch(`${API_BASE}/models`, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
-        if (response.status === 401) {
+
+        if (modelsResponse.status === 401) {
           setError('Please log in to load models.');
           return;
         }
 
-        if (!response.ok) {
+        if (!modelsResponse.ok) {
           throw new Error('Failed to load models');
         }
-        const data = await response.json();
-        setModels(Array.isArray(data.models) ? data.models : []);
-        if (Array.isArray(data.models) && data.models.length > 0) {
-          setSelectedModel(data.models[0]);
-        }
 
-        if (token) {
-          const usageResponse = await fetch(`${API_BASE}/usage`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (usageResponse.ok) {
-            const usageData = await usageResponse.json();
-            const used = Number(usageData.used) || 0;
-            const limit = Number(usageData.limit) || 25;
-            setMessagesLeft(Math.max(limit - used, 0));
-          }
+        const data = await modelsResponse.json();
+        const modelList = Array.isArray(data.models) ? data.models : [];
+        setModels(modelList);
+        if (modelList.length > 0) {
+          setSelectedModel(modelList[0]);
         }
+        sessionStorage.setItem(MODELS_CACHE_KEY, JSON.stringify(modelList));
+
       } catch (err) {
         const msg = typeof err?.message === 'string' ? err.message : '';
         if (/Failed to fetch/i.test(msg)) {
@@ -94,7 +123,7 @@ export default function ChatPage() {
     setReply('');
 
     try {
-      const token = localStorage.getItem('echomind_token');
+      const token = await getAuthToken();
       const response = await fetch(`${API_BASE}/chat`, {
         method: 'POST',
         headers: {
@@ -123,9 +152,6 @@ export default function ChatPage() {
 
       const data = await response.json();
       setReply(data.reply || '');
-      if (messagesLeft !== null) {
-        setMessagesLeft(Math.max(messagesLeft - 1, 0));
-      }
     } catch (err) {
       const msg = typeof err?.message === 'string' ? err.message : '';
       if (/Failed to fetch/i.test(msg)) {
@@ -137,6 +163,35 @@ export default function ChatPage() {
       setLoading(false);
     }
   };
+
+  if (userError && userError.type !== "auth" && userError.type !== "missing") {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
+        <div className="max-w-md text-center space-y-4">
+          <p className="text-sm text-slate-600">{userError.message}</p>
+          <Button onClick={ensureUser} className="px-6">
+            Try again
+          </Button>
+          <div>
+            <Link href="/login" className="text-sm text-slate-500 hover:text-slate-900">
+              Go to log in
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (authChecking || (!user && !hasFetched) || (userLoading && !user)) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="h-11 w-11 rounded-full border border-slate-200 bg-white shadow-sm animate-pulse motion-reduce:animate-none" />
+          <p className="text-sm text-slate-600" aria-live="polite">Preparing your space…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -160,14 +215,6 @@ export default function ChatPage() {
             <CardTitle>Chat</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {debugEnabled && (
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                <div><span className="font-medium">Debug</span> (dev only)</div>
-                <div suppressHydrationWarning>Origin: {origin}</div>
-                <div>API base: {API_BASE}</div>
-              </div>
-            )}
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Model</label>
               <Select value={selectedModel} onValueChange={setSelectedModel}>
@@ -204,9 +251,6 @@ export default function ChatPage() {
               </div>
             )}
 
-            {messagesLeft !== null && (
-              <p className="text-sm text-slate-500">{messagesLeft} messages left</p>
-            )}
           </CardContent>
         </Card>
       </main>

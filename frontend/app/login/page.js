@@ -10,10 +10,12 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { getApiBase } from "../../lib/apiBase";
+import { useUserStore } from "../context/user-context";
 
 export default function LoginPage() {
   const router = useRouter();
   const API_BASE = getApiBase();
+  const { setUser } = useUserStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -22,7 +24,7 @@ export default function LoginPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        router.replace("/account");
+        router.replace("/chat");
       }
     });
     return unsubscribe;
@@ -36,7 +38,6 @@ export default function LoginPage() {
     try {
       const credential = await signInWithEmailAndPassword(auth, email, password);
       const token = await credential.user.getIdToken();
-      localStorage.setItem("echomind_token", token);
 
       const profileResponse = await fetch(`${API_BASE}/me`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -51,7 +52,9 @@ export default function LoginPage() {
         throw new Error("Profile check failed");
       }
 
-      router.replace("/account");
+      const profileData = await profileResponse.json();
+      setUser(profileData);
+      router.replace("/chat");
     } catch (err) {
       if (err?.code === "auth/wrong-password" || err?.code === "auth/invalid-credential") {
         setError("Incorrect email or password.");
