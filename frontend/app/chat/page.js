@@ -23,9 +23,10 @@ export default function ChatPage() {
   const [reply, setReply] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [modelsLoading, setModelsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
-  const { user, isLoading: userLoading, error: userError, hasFetched, ensureUser } = useUserStore();
+  const { user, isLoading: userLoading, error: userError, hasFetched, ensureUser, setUser } = useUserStore();
 
   const getAuthToken = async () => {
     const authUser = auth.currentUser;
@@ -64,6 +65,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     const loadModelsAndQuota = async () => {
+      setModelsLoading(true);
       try {
         const token = await getAuthToken();
 
@@ -77,6 +79,7 @@ export default function ChatPage() {
         }
 
         if (cachedModels) {
+          setModelsLoading(false);
           return;
         }
 
@@ -100,7 +103,6 @@ export default function ChatPage() {
           setSelectedModel(modelList[0]);
         }
         sessionStorage.setItem(MODELS_CACHE_KEY, JSON.stringify(modelList));
-
       } catch (err) {
         const msg = typeof err?.message === 'string' ? err.message : '';
         if (/Failed to fetch/i.test(msg)) {
@@ -108,6 +110,8 @@ export default function ChatPage() {
         } else {
           setError('Could not load models. Check the backend and API base URL.');
         }
+      } finally {
+        setModelsLoading(false);
       }
     };
 
@@ -152,6 +156,12 @@ export default function ChatPage() {
 
       const data = await response.json();
       setReply(data.reply || '');
+      if (user) {
+        setUser({
+          ...user,
+          quota_used: Number(user.quota_used ?? 0) + 1,
+        });
+      }
     } catch (err) {
       const msg = typeof err?.message === 'string' ? err.message : '';
       if (/Failed to fetch/i.test(msg)) {
@@ -182,7 +192,9 @@ export default function ChatPage() {
     );
   }
 
-  if (authChecking || (!user && !hasFetched) || (userLoading && !user)) {
+  const isPreparing = authChecking || (!user && !hasFetched) || (userLoading && !user) || modelsLoading;
+
+  if (isPreparing) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
         <div className="flex flex-col items-center gap-4 text-center">
@@ -244,6 +256,12 @@ export default function ChatPage() {
             </Button>
 
             {error && <p className="text-sm text-red-600">{error}</p>}
+
+            {user && (
+              <p className="text-xs text-slate-500">
+                Messages left: {Math.max(0, Number(user.quota_limit ?? 25) - Number(user.quota_used ?? 0))}
+              </p>
+            )}
 
             {reply && (
               <div className="rounded-lg border border-slate-200 bg-white p-4 text-slate-700">
