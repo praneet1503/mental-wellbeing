@@ -46,6 +46,7 @@ const csp = [
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
   `script-src ${scriptSrc.join(" ")}${isProd ? "" : " 'unsafe-eval'"}`,
+  "frame-src https://vercel.live",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
