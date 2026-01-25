@@ -23,11 +23,21 @@ const connectSrc = [
   apiBase,
   "https://vitals.vercel-insights.com",
   "https://vercel.live",
+  "wss://vercel.live",
+  "https://identitytoolkit.googleapis.com",
+  "https://securetoken.googleapis.com",
+  "https://www.googleapis.com",
 ];
 
 if (!isProd) {
   connectSrc.push("http://localhost:8000", "http://127.0.0.1:8000", "ws://localhost:3000", "ws://127.0.0.1:3000");
 }
+
+const scriptSrc = [
+  "'self'",
+  "'unsafe-inline'",
+  "https://vercel.live",
+];
 
 const csp = [
   "default-src 'self'",
@@ -35,7 +45,7 @@ const csp = [
   "img-src 'self' data: https:",
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
-  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
+  `script-src ${scriptSrc.join(" ")}${isProd ? "" : " 'unsafe-eval'"}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
