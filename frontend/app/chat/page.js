@@ -70,15 +70,25 @@ export default function ChatPage() {
         const token = await getAuthToken();
 
         const cachedModels = sessionStorage.getItem(MODELS_CACHE_KEY);
+        let hadValidCache = false;
         if (cachedModels) {
-          const parsed = JSON.parse(cachedModels);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setModels(parsed);
-            setSelectedModel(parsed[0]);
+          try {
+            const parsed = JSON.parse(cachedModels);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setModels(parsed);
+              setSelectedModel(parsed[0]);
+              hadValidCache = true;
+            } else {
+              // Cached value is not a usable non-empty model list; clear it and fall through to fetch.
+              sessionStorage.removeItem(MODELS_CACHE_KEY);
+            }
+          } catch {
+            // Cached value is invalid JSON; clear it and fall through to fetch.
+            sessionStorage.removeItem(MODELS_CACHE_KEY);
           }
         }
 
-        if (cachedModels) {
+        if (hadValidCache) {
           setModelsLoading(false);
           return;
         }
