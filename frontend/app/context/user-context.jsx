@@ -6,7 +6,7 @@ import { auth } from "../../lib/firebase";
 import { getApiBase } from "../../lib/apiBase";
 
 const UserContext = createContext(null);
-const USER_CACHE_KEY = "echoMind:user";
+const USER_CACHE_KEY = "echomind_user";
 
 export function UserProvider({ children }) {
   const API_BASE = getApiBase();
