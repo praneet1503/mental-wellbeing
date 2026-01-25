@@ -1,0 +1,59 @@
+name: Rotate Firebase Admin Key
+
+on:
+  schedule:
+    - cron: "0 3 1 * *" # monthly
+  workflow_dispatch: {}
+
+jobs:
+  rotate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GOOGLE_PROJECT_ID }}
+          service_account_key: ${{ secrets.GOOGLE_CI_SA_KEY }}
+          export_default_credentials: true
+
+      - name: Rotate key
+        id: rotate
+        env:
+          GOOGLE_PROJECT_ID: ${{ secrets.GOOGLE_PROJECT_ID }}
+          FIREBASE_SA_EMAIL: ${{ secrets.FIREBASE_SA_EMAIL }}
+        run: |
+          chmod +x ./scripts/rotate_firebase_key.sh
+          ./scripts/rotate_firebase_key.sh > /tmp/firebase_key.json
+
+      - name: Update backend secret (Fly.io)
+        if: ${{ secrets.FLY_API_TOKEN != '' }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_APP_NAME: ${{ secrets.FLY_APP_NAME }}
+        run: |
+          curl -L https://fly.io/install.sh | sh
+          export PATH="$HOME/.fly/bin:$PATH"
+          flyctl secrets set FIREBASE_CREDENTIALS_JSON="$(cat /tmp/firebase_key.json)" -a "$FLY_APP_NAME"
+
+      - name: Update backend secret (Modal)
+        if: ${{ secrets.MODAL_TOKEN_ID != '' && secrets.MODAL_TOKEN_SECRET != '' }}
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        run: |
+          python -m pip install --upgrade modal
+          python - <<'PY'
+          import json, os, subprocess
+          key_json = open('/tmp/firebase_key.json', 'r', encoding='utf-8').read()
+          subprocess.check_call([
+              'modal', 'secret', 'create',
+              'firebase-service-account',
+              f'FIREBASE_CREDENTIALS_JSON={key_json}',
+              '--force'
+          ])
+          PY
