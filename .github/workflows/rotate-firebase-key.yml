@@ -31,21 +31,27 @@ jobs:
           ./scripts/rotate_firebase_key.sh > /tmp/firebase_key.json
 
       - name: Update backend secret (Fly.io)
-        if: ${{ secrets.FLY_API_TOKEN != '' }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           FLY_APP_NAME: ${{ secrets.FLY_APP_NAME }}
         run: |
+          if [ -z "${FLY_API_TOKEN}" ] || [ -z "${FLY_APP_NAME}" ]; then
+            echo "Fly secrets not configured; skipping."
+            exit 0
+          fi
           curl -L https://fly.io/install.sh | sh
           export PATH="$HOME/.fly/bin:$PATH"
           flyctl secrets set FIREBASE_CREDENTIALS_JSON="$(cat /tmp/firebase_key.json)" -a "$FLY_APP_NAME"
 
       - name: Update backend secret (Modal)
-        if: ${{ secrets.MODAL_TOKEN_ID != '' && secrets.MODAL_TOKEN_SECRET != '' }}
         env:
           MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
           MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
         run: |
+          if [ -z "${MODAL_TOKEN_ID}" ] || [ -z "${MODAL_TOKEN_SECRET}" ]; then
+            echo "Modal secrets not configured; skipping."
+            exit 0
+          fi
           python -m pip install --upgrade modal
           python - <<'PY'
           import json, os, subprocess
