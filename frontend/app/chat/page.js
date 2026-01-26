@@ -108,11 +108,6 @@ export default function ChatPage() {
     <>
       <ChatLayout>
         <ChatMessages messages={messages} isSending={isSending} />
-        {error && (
-          <div className="mx-auto w-full max-w-3xl px-4 pb-2 text-xs text-red-600">
-            {error}
-          </div>
-        )}
         <ChatInput onSend={sendMessage} isSending={isSending} />
       </ChatLayout>
       <PreparingSpaceOverlay isAppReady={isAppReady} />

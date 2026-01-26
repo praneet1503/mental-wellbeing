@@ -11,8 +11,8 @@ export default function ChatInput({ onSend, isSending }: { onSend: (message: str
   const handleSend = async () => {
     const trimmed = value.trim();
     if (!trimmed || isSending) return;
-    await onSend(trimmed);
     setValue("");
+    await onSend(trimmed);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {

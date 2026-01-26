@@ -139,6 +139,11 @@ def chat(request: Request, payload: ChatRequest, token: dict = Depends(require_v
     db = get_firestore()
     user_ref = db.collection("users").document(firebase_uid)
 
+    safety_decision = assess_input(payload.message)
+    if safety_decision.response:
+        conversation_id = payload.conversation_id or uuid4().hex
+        return ChatResponse(reply=safety_decision.response, conversation_id=conversation_id)
+
     @firestore.transactional
     def reserve_quota(transaction: firestore.Transaction) -> None:
         snapshot = transaction.get(user_ref)
@@ -160,11 +165,6 @@ def chat(request: Request, payload: ChatRequest, token: dict = Depends(require_v
 
     transaction = db.transaction()
     reserve_quota(transaction)
-
-    safety_decision = assess_input(payload.message)
-    if safety_decision.response:
-        conversation_id = payload.conversation_id or uuid4().hex
-        return ChatResponse(reply=safety_decision.response, conversation_id=conversation_id)
 
     conversation_id = payload.conversation_id or uuid4().hex
 

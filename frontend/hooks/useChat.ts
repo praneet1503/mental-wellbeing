@@ -67,8 +67,25 @@ export function useChat() {
       });
 
       if (!response.ok) {
-        const text = await response.text().catch(() => "");
-        throw new Error(text || `Request failed (${response.status})`);
+        let detail = "";
+        try {
+          const data = await response.json();
+          if (data && typeof data.detail === "string") {
+            detail = data.detail;
+          }
+        } catch {
+          detail = await response.text().catch(() => "");
+        }
+
+        if (response.status === 429) {
+          throw new Error("You have reached your usage limit. Please return tomorrow or check your account for details.");
+        }
+
+        if (detail) {
+          throw new Error(detail);
+        }
+
+        throw new Error(`Request failed (${response.status})`);
       }
 
       const data = await response.json();
@@ -87,13 +104,17 @@ export function useChat() {
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err: any) {
+      const messageText =
+        typeof err?.message === "string" && err.message.trim()
+          ? err.message
+          : "Something went wrong. Please try again.";
       const fallback: Message = {
         id: createId(),
         role: "assistant",
-        content: "Something went wrong. Please try again.",
+        content: messageText,
       };
       setMessages((prev) => [...prev, fallback]);
-      setError(typeof err?.message === "string" ? err.message : "Request failed");
+      setError(messageText);
     } finally {
       setIsSending(false);
     }
