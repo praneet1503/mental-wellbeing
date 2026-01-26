@@ -4,10 +4,11 @@ import asyncio
 import os
 import sys
 from functools import lru_cache
+from uuid import uuid4
 from pathlib import Path
 
 import modal
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from firebase_admin import firestore
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -27,12 +28,14 @@ _ensure_backend_on_path()
 from app.api.health import router as health_router  # noqa: E402
 from app.api.usage import router as usage_router  # noqa: E402
 from app.api.users import router as users_router  # noqa: E402
-from app.auth import verify_token  # noqa: E402
+from app.auth import require_verified_user  # noqa: E402
 from app.core.cors import apply_cors  # noqa: E402
+from app.core.logging import RequestLogMiddleware  # noqa: E402
+from app.core.rate_limit import apply_rate_limiting, limiter, uid_limit_key  # noqa: E402
 from app.llm.sambanova import SambaNovaClient  # noqa: E402
-from app.safety.rules import apply_safety_rules  # noqa: E402
+from app.safety.pipeline import assess_input, assess_output  # noqa: E402
 from app.schemas import ChatRequest, ChatResponse, ModelsResponse  # noqa: E402
-from app.settings import Settings  # noqa: E402
+from app.settings import Settings, validate_runtime_settings  # noqa: E402
 from app.db import get_firestore  # noqa: E402
 
 image = (
@@ -43,10 +46,11 @@ image = (
     "httpx",
     "pydantic",
     "pydantic-settings",
+    "slowapi",
     )
     .add_local_dir(
-        PROJECT_ROOT,
-        remote_path=REMOTE_PROJECT_ROOT,
+        PROJECT_ROOT / "backend",
+        remote_path=REMOTE_PROJECT_ROOT / "backend",
         ignore=[
             ".git",
             ".git/**",
@@ -54,6 +58,10 @@ image = (
             ".venv/**",
             "node_modules",
             "node_modules/**",
+            ".next",
+            ".next/**",
+            "firebase-adminsdk-*.json",
+            "service-account*.json",
             "__pycache__",
             "**/__pycache__",
             "*.pyc",
@@ -104,33 +112,46 @@ def run_llm(prompt: str, system_prompt: str, model: str | None = None, action: s
 
 
 fastapi_app = FastAPI(title="EchoMind API")
+_app_configured = False
 
-# Allow Vercel production and preview domains for CORS. This is set before Settings()
-# is instantiated so the CORS middleware can validate these origins.
-# Production: https://mental-wellbeing.vercel.app
-# Previews: https://*.vercel.app (handled by regex in cors.py)
-if "FRONTEND_ORIGIN" not in os.environ:
-    os.environ["FRONTEND_ORIGIN"] = "https://mental-wellbeing.vercel.app"
 
-# CORS uses dynamic origin checks to safely allow Vercel preview URLs and localhost
-# while keeping allow_credentials=True. Wildcard origins are unsafe with credentials
-# because they allow any origin to receive auth tokens. The middleware explicitly
-# validates Vercel preview hostnames instead of using "*" to avoid that risk.
-apply_cors(fastapi_app, Settings())
+def _configure_fastapi_app() -> None:
+    global _app_configured
+    if _app_configured:
+        return
 
-fastapi_app.include_router(health_router)
-fastapi_app.include_router(usage_router)
-fastapi_app.include_router(users_router)
+    settings = Settings()
+    validate_runtime_settings(settings)
+
+    # CORS uses dynamic origin checks to safely allow Vercel preview URLs and localhost
+    # while keeping allow_credentials=True. Wildcard origins are unsafe with credentials
+    # because they allow any origin to receive auth tokens. The middleware explicitly
+    # validates Vercel preview hostnames instead of using "*" to avoid that risk.
+    apply_cors(fastapi_app, settings)
+    apply_rate_limiting(fastapi_app)
+    fastapi_app.add_middleware(RequestLogMiddleware)
+
+    fastapi_app.include_router(health_router)
+    fastapi_app.include_router(usage_router)
+    fastapi_app.include_router(users_router)
+
+    _app_configured = True
 
 
 @fastapi_app.post("/chat", response_model=ChatResponse)
-def chat(request: ChatRequest, token: dict = Depends(verify_token)) -> ChatResponse:
+@limiter.limit("10/minute", key_func=uid_limit_key)
+def chat(request: Request, payload: ChatRequest, token: dict = Depends(require_verified_user)) -> ChatResponse:
     firebase_uid = token.get("uid")
     if not firebase_uid:
         raise HTTPException(status_code=401, detail="Invalid authentication token")
 
     db = get_firestore()
     user_ref = db.collection("users").document(firebase_uid)
+
+    safety_decision = assess_input(payload.message)
+    if safety_decision.response:
+        conversation_id = payload.conversation_id or uuid4().hex
+        return ChatResponse(reply=safety_decision.response, conversation_id=conversation_id)
 
     @firestore.transactional
     def reserve_quota(transaction: firestore.Transaction) -> None:
@@ -154,28 +175,42 @@ def chat(request: ChatRequest, token: dict = Depends(verify_token)) -> ChatRespo
     transaction = db.transaction()
     reserve_quota(transaction)
 
-    safety_reply = apply_safety_rules(request.message)
-    if safety_reply:
-        return ChatResponse(reply=safety_reply)
+    conversation_id = payload.conversation_id or uuid4().hex
 
+    settings = Settings()
+    validate_runtime_settings(settings)
     system_prompt = load_system_prompt()
-    reply = run_llm.remote(
-        prompt=request.message,
-        system_prompt=system_prompt,
-        model=request.model,
-        action="generate",
-    )
-    return ChatResponse(reply=reply)
+    try:
+        reply = run_llm.remote(
+            prompt=payload.message,
+            system_prompt=system_prompt,
+            model=settings.sambanova_model,
+            action="generate",
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    output_decision = assess_output(reply)
+    if output_decision.response:
+        return ChatResponse(reply=output_decision.response, conversation_id=conversation_id)
+
+    return ChatResponse(reply=reply, conversation_id=conversation_id)
 
 
 @fastapi_app.get("/models", response_model=ModelsResponse)
-def list_models() -> ModelsResponse:
+@limiter.limit("10/minute", key_func=uid_limit_key)
+def list_models(request: Request, token: dict = Depends(require_verified_user)) -> ModelsResponse:
+    # Production check removed - models endpoint is now available in all environments
+    settings = Settings()
+    validate_runtime_settings(settings)
     models = run_llm.remote(
         prompt="",
         system_prompt="",
         action="list_models",
     )
-    return ModelsResponse(models=models)
+    allowed = set(settings.allowed_models or [settings.sambanova_model])
+    filtered = [model for model in models if model in allowed]
+    return ModelsResponse(models=filtered)
 
 
 @app.function(
@@ -184,4 +219,5 @@ def list_models() -> ModelsResponse:
 )
 @modal.asgi_app()
 def api():
+    _configure_fastapi_app()
     return fastapi_app

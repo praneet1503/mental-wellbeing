@@ -1,23 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 
 import { auth } from "../../lib/firebase";
-import { getApiBase } from "../../lib/apiBase";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-
-const API_BASE = getApiBase();
+import { useUserStore } from "../context/user-context";
 
 export default function AccountPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [joined, setJoined] = useState("");
-  const [quota, setQuota] = useState({ used: 0, limit: 25 });
-  const [quotaError, setQuotaError] = useState("");
+  const { user, isLoading, error, ensureUser, clearUser } = useUserStore();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -26,43 +20,37 @@ export default function AccountPage() {
         return;
       }
 
-      try {
-        const token = await user.getIdToken();
-        localStorage.setItem("echomind_token", token);
-        const response = await fetch(`${API_BASE}/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (response.status === 404) {
-          router.replace("/complete-profile");
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error("Unable to load profile");
-        }
-
-        const data = await response.json();
-        setEmail(data.email || "");
-        setUsername(data.username || "");
-        setJoined(data.created_at || "");
-        setQuota({
-          used: Number(data.quota_used) || 0,
-          limit: Number(data.quota_limit) || 25,
-        });
-      } catch (err) {
-        setQuotaError("Unable to load quota.");
-      }
+      await ensureUser();
     });
 
     return unsubscribe;
-  }, [router]);
+  }, [router, ensureUser]);
+
+  useEffect(() => {
+    if (error?.type === "auth") {
+      router.replace("/login");
+    }
+    if (error?.type === "missing") {
+      router.replace("/complete-profile");
+    }
+  }, [error, router]);
 
   const handleLogout = async () => {
     await signOut(auth);
-    localStorage.removeItem("echomind_token");
+    clearUser();
     router.replace("/login");
   };
+
+  if (isLoading && !user) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="h-11 w-11 rounded-full border border-slate-200 bg-white shadow-sm animate-pulse motion-reduce:animate-none" />
+          <p className="text-sm text-slate-600" aria-live="polite">Preparing your space…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
@@ -73,23 +61,23 @@ export default function AccountPage() {
         <CardContent className="space-y-4">
           <div>
             <p className="text-sm text-slate-500">Email</p>
-            <p className="font-medium">{email}</p>
+            <p className="font-medium">{user?.email || "—"}</p>
           </div>
           <div>
             <p className="text-sm text-slate-500">Username</p>
-            <p className="font-medium">{username || "—"}</p>
+            <p className="font-medium">{user?.username || "—"}</p>
           </div>
           <div>
             <p className="text-sm text-slate-500">Date joined</p>
-            <p className="font-medium">{joined || "—"}</p>
+            <p className="font-medium">{user?.created_at || "—"}</p>
           </div>
           <div>
             <p className="text-sm text-slate-500">Quota</p>
-            {quotaError ? (
-              <p className="text-red-600 text-sm">{quotaError}</p>
+            {error && error.type !== "auth" && error.type !== "missing" ? (
+              <p className="text-red-600 text-sm">{error.message}</p>
             ) : (
               <p className="font-medium">
-                {quota.used} / {quota.limit}
+                {Number(user?.quota_used ?? 0)} / {Number(user?.quota_limit ?? 25)}
               </p>
             )}
           </div>

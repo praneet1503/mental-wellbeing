@@ -9,20 +9,19 @@ import { auth } from "../../lib/firebase";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
-import { getApiBase } from "../../lib/apiBase";
 
 export default function LoginPage() {
   const router = useRouter();
-  const API_BASE = getApiBase();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        router.replace("/account");
+        router.replace("/chat");
       }
     });
     return unsubscribe;
@@ -35,23 +34,7 @@ export default function LoginPage() {
 
     try {
       const credential = await signInWithEmailAndPassword(auth, email, password);
-      const token = await credential.user.getIdToken();
-      localStorage.setItem("echomind_token", token);
-
-      const profileResponse = await fetch(`${API_BASE}/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (profileResponse.status === 404) {
-        router.replace("/complete-profile");
-        return;
-      }
-
-      if (!profileResponse.ok) {
-        throw new Error("Profile check failed");
-      }
-
-      router.replace("/account");
+      router.replace("/chat");
     } catch (err) {
       if (err?.code === "auth/wrong-password" || err?.code === "auth/invalid-credential") {
         setError("Incorrect email or password.");
@@ -85,13 +68,78 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Password</label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Your password"
-                required
-              />
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Your password"
+                  required
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-2 flex items-center text-slate-500 hover:text-slate-900"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      className="h-4 w-4"
+                    >
+                      <path
+                        d="M3 3l18 18"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M10.58 10.58a2 2 0 102.83 2.83"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M9.88 4.24A10.43 10.43 0 0112 4c4.64 0 8.57 3.1 10 8-0.48 1.62-1.33 3.06-2.46 4.22"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M6.61 6.61C4.86 8.1 3.58 10.01 3 12c1.43 4.9 5.36 8 10 8 1.43 0 2.8-.3 4.06-.85"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      className="h-4 w-4"
+                    >
+                      <path
+                        d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M12 15a3 3 0 100-6 3 3 0 000 6Z"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <Button type="submit" className="w-full" disabled={loading}>

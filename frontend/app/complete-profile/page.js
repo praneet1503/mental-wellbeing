@@ -26,7 +26,6 @@ export default function CompleteProfilePage() {
       }
 
       const token = await user.getIdToken();
-      localStorage.setItem("echomind_token", token);
 
       const response = await fetch(`${API_BASE}/me`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -59,7 +58,6 @@ export default function CompleteProfilePage() {
       }
 
       const token = await user.getIdToken();
-      localStorage.setItem("echomind_token", token);
 
       const response = await fetch(`${API_BASE}/users`, {
         method: "POST",
