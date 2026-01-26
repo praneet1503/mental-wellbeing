@@ -9,19 +9,14 @@ import { auth } from "../../lib/firebase";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
-import { getApiBase } from "../../lib/apiBase";
-import { useUserStore } from "../context/user-context";
 
 export default function LoginPage() {
   const router = useRouter();
-  const API_BASE = getApiBase();
-  const { setUser } = useUserStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [preparing, setPreparing] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -39,30 +34,6 @@ export default function LoginPage() {
 
     try {
       const credential = await signInWithEmailAndPassword(auth, email, password);
-      const token = await credential.user.getIdToken();
-
-      setPreparing(true);
-
-      // Warm Modal container and validate API reachability
-      await fetch(`${API_BASE}/health`).catch(() => null);
-
-      const profileResponse = await fetch(`${API_BASE}/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (profileResponse.status === 404) {
-        router.replace("/complete-profile");
-        return;
-      }
-
-      if (!profileResponse.ok) {
-        throw new Error("Profile check failed");
-      }
-
-      const profileData = await profileResponse.json();
-      sessionStorage.setItem("echomind_user", JSON.stringify(profileData));
-
-      setUser(profileData);
       router.replace("/chat");
     } catch (err) {
       if (err?.code === "auth/wrong-password" || err?.code === "auth/invalid-credential") {
@@ -74,20 +45,8 @@ export default function LoginPage() {
       }
     } finally {
       setLoading(false);
-      setPreparing(false);
     }
   };
-
-  if (preparing) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="h-11 w-11 rounded-full border border-slate-200 bg-white shadow-sm animate-pulse motion-reduce:animate-none" />
-          <p className="text-sm text-slate-600" aria-live="polite">Preparing your space…</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
