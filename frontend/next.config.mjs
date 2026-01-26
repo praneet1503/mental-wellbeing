@@ -22,6 +22,7 @@ const connectSrc = [
   "'self'",
   apiBase,
   "https://vitals.vercel-insights.com",
+  "https://va.vercel-scripts.com",
   "https://vercel.live",
   "wss://vercel.live",
   "https://identitytoolkit.googleapis.com",
@@ -37,6 +38,7 @@ const scriptSrc = [
   "'self'",
   "'unsafe-inline'",
   "https://vercel.live",
+  "https://va.vercel-scripts.com",
 ];
 
 const csp = [

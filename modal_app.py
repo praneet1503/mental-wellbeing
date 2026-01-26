@@ -4,10 +4,11 @@ import asyncio
 import os
 import sys
 from functools import lru_cache
+from uuid import uuid4
 from pathlib import Path
 
 import modal
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from firebase_admin import firestore
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -48,8 +49,8 @@ image = (
     "slowapi",
     )
     .add_local_dir(
-        PROJECT_ROOT,
-        remote_path=REMOTE_PROJECT_ROOT,
+        PROJECT_ROOT / "backend",
+        remote_path=REMOTE_PROJECT_ROOT / "backend",
         ignore=[
             ".git",
             ".git/**",
@@ -57,6 +58,8 @@ image = (
             ".venv/**",
             "node_modules",
             "node_modules/**",
+            ".next",
+            ".next/**",
             "firebase-adminsdk-*.json",
             "service-account*.json",
             "__pycache__",
@@ -128,7 +131,7 @@ fastapi_app.include_router(users_router)
 
 @fastapi_app.post("/chat", response_model=ChatResponse)
 @limiter.limit("10/minute", key_func=uid_limit_key)
-def chat(request: ChatRequest, token: dict = Depends(require_verified_user)) -> ChatResponse:
+def chat(request: Request, payload: ChatRequest, token: dict = Depends(require_verified_user)) -> ChatResponse:
     firebase_uid = token.get("uid")
     if not firebase_uid:
         raise HTTPException(status_code=401, detail="Invalid authentication token")
@@ -158,35 +161,35 @@ def chat(request: ChatRequest, token: dict = Depends(require_verified_user)) -> 
     transaction = db.transaction()
     reserve_quota(transaction)
 
-    safety_decision = assess_input(request.message)
+    safety_decision = assess_input(payload.message)
     if safety_decision.response:
-        return ChatResponse(reply=safety_decision.response)
+        conversation_id = payload.conversation_id or uuid4().hex
+        return ChatResponse(reply=safety_decision.response, conversation_id=conversation_id)
 
-    allowed_models = settings.allowed_models or [settings.sambanova_model]
-    if request.model and request.model not in allowed_models:
-        raise HTTPException(status_code=400, detail="Model not allowed")
+    conversation_id = payload.conversation_id or uuid4().hex
 
     system_prompt = load_system_prompt()
-    reply = run_llm.remote(
-        prompt=request.message,
-        system_prompt=system_prompt,
-        model=request.model or settings.sambanova_model,
-        action="generate",
-    )
+    try:
+        reply = run_llm.remote(
+            prompt=payload.message,
+            system_prompt=system_prompt,
+            model=settings.sambanova_model,
+            action="generate",
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     output_decision = assess_output(reply)
     if output_decision.response:
-        return ChatResponse(reply=output_decision.response)
+        return ChatResponse(reply=output_decision.response, conversation_id=conversation_id)
 
-    return ChatResponse(reply=reply)
+    return ChatResponse(reply=reply, conversation_id=conversation_id)
 
 
 @fastapi_app.get("/models", response_model=ModelsResponse)
 @limiter.limit("10/minute", key_func=uid_limit_key)
-def list_models(token: dict = Depends(require_verified_user)) -> ModelsResponse:
-    if settings.env == "production":
-        raise HTTPException(status_code=404, detail="Not found")
-
+def list_models(request: Request, token: dict = Depends(require_verified_user)) -> ModelsResponse:
+    # Production check removed - models endpoint is now available in all environments
     models = run_llm.remote(
         prompt="",
         system_prompt="",

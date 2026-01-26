@@ -54,6 +54,8 @@ export default function LoginPage() {
       }
 
       const profileData = await profileResponse.json();
+      sessionStorage.setItem("echomind_user", JSON.stringify(profileData));
+
       setUser(profileData);
       router.replace("/chat");
     } catch (err) {
