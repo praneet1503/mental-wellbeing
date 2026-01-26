@@ -18,8 +18,10 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState("idle");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -30,6 +32,54 @@ export default function SignupPage() {
     return unsubscribe;
   }, [router]);
 
+  useEffect(() => {
+    const trimmed = username.trim().toLowerCase();
+    if (!trimmed) {
+      setUsernameStatus("idle");
+      return;
+    }
+
+    const isValid = /^[a-z0-9_]{3,20}$/.test(trimmed);
+    if (!isValid) {
+      setUsernameStatus("invalid");
+      return;
+    }
+
+    setIsChecking(true);
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(`${API_BASE}/users/check?username=${encodeURIComponent(trimmed)}`, {
+          signal: controller.signal,
+        });
+
+        if (response.status === 422) {
+          setUsernameStatus("invalid");
+          return;
+        }
+
+        if (!response.ok) {
+          setUsernameStatus("error");
+          return;
+        }
+
+        const data = await response.json();
+        setUsernameStatus(data?.available ? "available" : "taken");
+      } catch (err) {
+        if (err?.name !== "AbortError") {
+          setUsernameStatus("error");
+        }
+      } finally {
+        setIsChecking(false);
+      }
+    }, 450);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [API_BASE, username]);
+
   const handleSignup = async (event) => {
     event.preventDefault();
     setError("");
@@ -37,6 +87,24 @@ export default function SignupPage() {
 
     if (!username.trim()) {
       setError("Username is required.");
+      setLoading(false);
+      return;
+    }
+
+    if (usernameStatus === "taken") {
+      setError("Username already taken.");
+      setLoading(false);
+      return;
+    }
+
+    if (usernameStatus === "invalid") {
+      setError("Username must be lowercase, 3-20 chars, letters/numbers/underscore.");
+      setLoading(false);
+      return;
+    }
+
+    if (usernameStatus === "error") {
+      setError("Unable to verify username right now. Please try again.");
       setLoading(false);
       return;
     }
@@ -95,6 +163,21 @@ export default function SignupPage() {
                 onChange={(event) => setUsername(event.target.value)}
                 placeholder="Your name"
               />
+              {usernameStatus === "taken" && (
+                <p className="text-xs text-red-600">Username is taken.</p>
+              )}
+              {usernameStatus === "invalid" && (
+                <p className="text-xs text-red-600">Use 3-20 lowercase letters, numbers, or underscores.</p>
+              )}
+              {usernameStatus === "available" && (
+                <p className="text-xs text-emerald-600">Username is available.</p>
+              )}
+              {usernameStatus === "error" && (
+                <p className="text-xs text-amber-600">Unable to verify username right now.</p>
+              )}
+              {isChecking && (
+                <p className="text-xs text-slate-400">Checking availability…</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Email</label>
