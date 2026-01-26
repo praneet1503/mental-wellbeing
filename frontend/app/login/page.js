@@ -21,6 +21,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [preparing, setPreparing] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -39,6 +40,11 @@ export default function LoginPage() {
     try {
       const credential = await signInWithEmailAndPassword(auth, email, password);
       const token = await credential.user.getIdToken();
+
+      setPreparing(true);
+
+      // Warm Modal container and validate API reachability
+      await fetch(`${API_BASE}/health`).catch(() => null);
 
       const profileResponse = await fetch(`${API_BASE}/me`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -68,8 +74,20 @@ export default function LoginPage() {
       }
     } finally {
       setLoading(false);
+      setPreparing(false);
     }
   };
+
+  if (preparing) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="h-11 w-11 rounded-full border border-slate-200 bg-white shadow-sm animate-pulse motion-reduce:animate-none" />
+          <p className="text-sm text-slate-600" aria-live="polite">Preparing your space…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">

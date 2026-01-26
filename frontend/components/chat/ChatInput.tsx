@@ -27,19 +27,24 @@ export default function ChatInput({ onSend, isSending }: { onSend: (message: str
   const overLimit = value.length > MAX_MESSAGE_LENGTH;
 
   return (
-    <div className="border-t bg-white/95 backdrop-blur px-4 py-4">
+    <div className="sticky bottom-0 border-t bg-white/95 backdrop-blur px-4 py-4">
       <div className="mx-auto flex max-w-3xl flex-col gap-2">
-        <textarea
-          className="min-h-[96px] w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
-          placeholder="Message EchoMind..."
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={isSending}
-          aria-label="Chat message"
-        />
-        <div className="flex items-center justify-between text-xs text-slate-500">
-          <span>{value.length}/{MAX_MESSAGE_LENGTH}</span>
+        <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+          <textarea
+            className="min-h-[88px] w-full resize-none bg-transparent text-sm text-slate-900 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+            placeholder="Message EchoMind..."
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={isSending}
+            aria-label="Chat message"
+          />
+          <div className="flex items-center justify-between pt-2 text-xs text-slate-500">
+            <span>Enter to send · Shift+Enter for new line</span>
+            <span>{value.length}/{MAX_MESSAGE_LENGTH}</span>
+          </div>
+        </div>
+        <div className="flex items-center justify-end">
           <Button onClick={handleSend} disabled={isSending || !value.trim() || overLimit}>
             {isSending ? "Sending..." : "Send"}
           </Button>
