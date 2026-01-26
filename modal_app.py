@@ -111,22 +111,31 @@ def run_llm(prompt: str, system_prompt: str, model: str | None = None, action: s
     )
 
 
-settings = Settings()
-validate_runtime_settings(settings)
-
 fastapi_app = FastAPI(title="EchoMind API")
+_app_configured = False
 
-# CORS uses dynamic origin checks to safely allow Vercel preview URLs and localhost
-# while keeping allow_credentials=True. Wildcard origins are unsafe with credentials
-# because they allow any origin to receive auth tokens. The middleware explicitly
-# validates Vercel preview hostnames instead of using "*" to avoid that risk.
-apply_cors(fastapi_app, settings)
-apply_rate_limiting(fastapi_app)
-fastapi_app.add_middleware(RequestLogMiddleware)
 
-fastapi_app.include_router(health_router)
-fastapi_app.include_router(usage_router)
-fastapi_app.include_router(users_router)
+def _configure_fastapi_app() -> None:
+    global _app_configured
+    if _app_configured:
+        return
+
+    settings = Settings()
+    validate_runtime_settings(settings)
+
+    # CORS uses dynamic origin checks to safely allow Vercel preview URLs and localhost
+    # while keeping allow_credentials=True. Wildcard origins are unsafe with credentials
+    # because they allow any origin to receive auth tokens. The middleware explicitly
+    # validates Vercel preview hostnames instead of using "*" to avoid that risk.
+    apply_cors(fastapi_app, settings)
+    apply_rate_limiting(fastapi_app)
+    fastapi_app.add_middleware(RequestLogMiddleware)
+
+    fastapi_app.include_router(health_router)
+    fastapi_app.include_router(usage_router)
+    fastapi_app.include_router(users_router)
+
+    _app_configured = True
 
 
 @fastapi_app.post("/chat", response_model=ChatResponse)
@@ -168,6 +177,8 @@ def chat(request: Request, payload: ChatRequest, token: dict = Depends(require_v
 
     conversation_id = payload.conversation_id or uuid4().hex
 
+    settings = Settings()
+    validate_runtime_settings(settings)
     system_prompt = load_system_prompt()
     try:
         reply = run_llm.remote(
@@ -190,6 +201,8 @@ def chat(request: Request, payload: ChatRequest, token: dict = Depends(require_v
 @limiter.limit("10/minute", key_func=uid_limit_key)
 def list_models(request: Request, token: dict = Depends(require_verified_user)) -> ModelsResponse:
     # Production check removed - models endpoint is now available in all environments
+    settings = Settings()
+    validate_runtime_settings(settings)
     models = run_llm.remote(
         prompt="",
         system_prompt="",
@@ -206,4 +219,5 @@ def list_models(request: Request, token: dict = Depends(require_verified_user)) 
 )
 @modal.asgi_app()
 def api():
+    _configure_fastapi_app()
     return fastapi_app
