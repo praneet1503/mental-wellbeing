@@ -168,6 +168,7 @@ async def _startup() -> None:
 
 
 @fastapi_app.post("/chat", response_model=ChatResponse)
+@fastapi_app.post("/chat/message", response_model=ChatResponse)
 @limiter.limit("10/minute", key_func=uid_limit_key)
 def chat(request: Request, payload: ChatRequest, token: dict = Depends(require_verified_user)) -> ChatResponse:
     firebase_uid = token.get("uid")

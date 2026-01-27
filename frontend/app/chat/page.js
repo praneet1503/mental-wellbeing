@@ -8,6 +8,7 @@ import { getApiBase } from "../../lib/apiBase";
 import ChatLayout from "../../components/chat/ChatLayout";
 import ChatMessages from "../../components/chat/ChatMessages";
 import ChatInput from "../../components/chat/ChatInput";
+import ChatMemoryPanel from "../../components/chat/ChatMemoryPanel";
 import { useChat } from "../../hooks/useChat";
 import { useUserStore } from "../context/user-context";
 import PreparingSpaceOverlay, { READY_POLL_INTERVAL_MS } from "../../components/ritual/PreparingSpaceOverlay";
@@ -21,7 +22,7 @@ export default function ChatPage() {
   const [safetyContextReady, setSafetyContextReady] = useState(false);
   const [systemPromptReady, setSystemPromptReady] = useState(false);
   const { user, hasFetched, ensureUser, error: userError } = useUserStore();
-  const { messages, isSending, error, sendMessage } = useChat();
+  const { messages, isSending, error, sendMessage, endChat, initializeSession } = useChat();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -34,6 +35,12 @@ export default function ChatPage() {
 
     return unsubscribe;
   }, [router]);
+
+  useEffect(() => {
+    if (authReady) {
+      initializeSession();
+    }
+  }, [authReady, initializeSession]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -106,9 +113,14 @@ export default function ChatPage() {
 
   return (
     <>
-      <ChatLayout>
-        <ChatMessages messages={messages} isSending={isSending} />
-        <ChatInput onSend={sendMessage} isSending={isSending} />
+      <ChatLayout onNewChat={endChat} isSending={isSending}>
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 md:flex-row">
+          <div className="flex min-h-[70vh] flex-1 flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <ChatMessages messages={messages} isSending={isSending} />
+            <ChatInput onSend={sendMessage} isSending={isSending} />
+          </div>
+          <ChatMemoryPanel messages={messages} />
+        </div>
       </ChatLayout>
       <PreparingSpaceOverlay isAppReady={isAppReady} />
     </>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { create } from "zustand";
 import { auth } from "../lib/firebase";
 import { getApiBase } from "../lib/apiBase";
 
@@ -10,39 +10,55 @@ export type Message = {
   content: string;
 };
 
+type ChatState = {
+  sessionId: string | null;
+  messages: Message[];
+  isSending: boolean;
+  error: string | null;
+  abortController: AbortController | null;
+  initializeSession: () => void;
+  sendMessage: (content: string) => Promise<void>;
+  endChat: () => Promise<void>;
+};
+
+const MAX_MESSAGE_LENGTH = 4000;
+
 function createId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export function useChat() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isSending, setIsSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+function createSessionId() {
+  return crypto.randomUUID();
+}
 
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-    };
-  }, []);
-
-  const sendMessage = useCallback(async (content: string) => {
+export const useChatStore = create<ChatState>((set, get) => ({
+  sessionId: null,
+  messages: [],
+  isSending: false,
+  error: null,
+  abortController: null,
+  initializeSession: () => {
+    if (!get().sessionId) {
+      set({ sessionId: createSessionId() });
+    }
+  },
+  sendMessage: async (content: string) => {
     const trimmed = String(content || "").trim();
-    if (!trimmed || isSending) return;
-    if (trimmed.length > 4000) {
-      setError("Message is too long. Please keep it under 4000 characters.");
+    if (!trimmed || get().isSending) return;
+    if (trimmed.length > MAX_MESSAGE_LENGTH) {
+      set({ error: "Message is too long. Please keep it under 4000 characters." });
       return;
     }
 
-    setError(null);
-    const userMessage: Message = { id: createId(), role: "user", content: trimmed };
-    setMessages((prev) => [...prev, userMessage]);
-    setIsSending(true);
+    const sessionId = get().sessionId ?? createSessionId();
+    set({ sessionId, error: null });
 
-    abortRef.current?.abort();
+    const userMessage: Message = { id: createId(), role: "user", content: trimmed };
+    set((state) => ({ messages: [...state.messages, userMessage], isSending: true }));
+
+    get().abortController?.abort();
     const controller = new AbortController();
-    abortRef.current = controller;
+    set({ abortController: controller });
 
     try {
       const user = auth.currentUser;
@@ -53,7 +69,7 @@ export function useChat() {
       const token = await user.getIdToken();
       const API_BASE = getApiBase();
 
-      const response = await fetch(`${API_BASE}/chat`, {
+      const response = await fetch(`${API_BASE}/chat/message`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -61,7 +77,7 @@ export function useChat() {
         },
         body: JSON.stringify({
           message: trimmed,
-          conversation_id: conversationId || undefined,
+          session_id: sessionId,
         }),
         signal: controller.signal,
       });
@@ -93,16 +109,12 @@ export function useChat() {
         throw new Error("Invalid response format");
       }
 
-      if (typeof data.conversation_id === "string") {
-        setConversationId(data.conversation_id);
-      }
-
       const assistantMessage: Message = {
         id: createId(),
         role: "assistant",
         content: data.reply,
       };
-      setMessages((prev) => [...prev, assistantMessage]);
+      set((state) => ({ messages: [...state.messages, assistantMessage] }));
     } catch (err: any) {
       const messageText =
         typeof err?.message === "string" && err.message.trim()
@@ -113,17 +125,40 @@ export function useChat() {
         role: "assistant",
         content: messageText,
       };
-      setMessages((prev) => [...prev, fallback]);
-      setError(messageText);
+      set((state) => ({ messages: [...state.messages, fallback], error: messageText }));
     } finally {
-      setIsSending(false);
+      set({ isSending: false });
     }
-  }, [conversationId, isSending]);
+  },
+  endChat: async () => {
+    const sessionId = get().sessionId;
+    const API_BASE = getApiBase();
 
-  return {
-    messages,
-    isSending,
-    error,
-    sendMessage,
-  };
+    if (sessionId) {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error("Not authenticated");
+        }
+        const token = await user.getIdToken();
+        await fetch(`${API_BASE}/chat/session`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ session_id: sessionId }),
+        });
+      } catch {
+        // Graceful failure: keep UI responsive and reset locally.
+      }
+    }
+
+    set({ messages: [], sessionId: createSessionId(), error: null });
+  },
+}));
+
+export function useChat() {
+  const { sessionId, messages, isSending, error, initializeSession, sendMessage, endChat } = useChatStore();
+  return { sessionId, messages, isSending, error, initializeSession, sendMessage, endChat };
 }
