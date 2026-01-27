@@ -9,6 +9,7 @@ from pathlib import Path
 
 import modal
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from firebase_admin import firestore
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -37,6 +38,12 @@ from app.safety.pipeline import assess_input, assess_output  # noqa: E402
 from app.schemas import ChatRequest, ChatResponse, ModelsResponse  # noqa: E402
 from app.settings import Settings, validate_runtime_settings  # noqa: E402
 from app.db import get_firestore  # noqa: E402
+from app.memory.redis_memory import (  # noqa: E402
+    append_chat_memory,
+    check_redis_health,
+    create_redis_client,
+    get_chat_memory,
+)
 
 image = (
     modal.Image.debian_slim()
@@ -47,6 +54,7 @@ image = (
     "pydantic",
     "pydantic-settings",
     "slowapi",
+    "upstash-redis",
     )
     .add_local_dir(
         PROJECT_ROOT / "backend",
@@ -76,6 +84,7 @@ app = modal.App("echomind-api")
 modal_secrets = [
     modal.Secret.from_name("firebase-service-account"),
     modal.Secret.from_name("sambanova-api-key"),
+    modal.Secret.from_name("upstash-redis"),
 ]
 
 
@@ -95,7 +104,13 @@ def load_system_prompt() -> str:
     image=image,
     secrets=modal_secrets,
 )
-def run_llm(prompt: str, system_prompt: str, model: str | None = None, action: str = "generate"):
+def run_llm(
+    prompt: str,
+    system_prompt: str,
+    model: str | None = None,
+    action: str = "generate",
+    history: list[dict[str, str]] | None = None,
+):
     settings = Settings()
     client = SambaNovaClient(settings)
 
@@ -107,6 +122,7 @@ def run_llm(prompt: str, system_prompt: str, model: str | None = None, action: s
             message=prompt,
             system_prompt=system_prompt,
             model=model,
+            history=history,
         )
     )
 
@@ -138,6 +154,18 @@ def _configure_fastapi_app() -> None:
     _app_configured = True
 
 
+@fastapi_app.on_event("startup")
+async def _startup() -> None:
+    redis_client = create_redis_client()
+    fastapi_app.state.redis_client = redis_client
+    if not redis_client:
+        return
+    try:
+        await run_in_threadpool(check_redis_health, redis_client)
+    except Exception:
+        fastapi_app.state.redis_client = None
+
+
 @fastapi_app.post("/chat", response_model=ChatResponse)
 @limiter.limit("10/minute", key_func=uid_limit_key)
 def chat(request: Request, payload: ChatRequest, token: dict = Depends(require_verified_user)) -> ChatResponse:
@@ -145,12 +173,26 @@ def chat(request: Request, payload: ChatRequest, token: dict = Depends(require_v
     if not firebase_uid:
         raise HTTPException(status_code=401, detail="Invalid authentication token")
 
+    redis_client = getattr(request.app.state, "redis_client", None)
+
     db = get_firestore()
     user_ref = db.collection("users").document(firebase_uid)
 
     safety_decision = assess_input(payload.message)
     if safety_decision.response:
         conversation_id = payload.conversation_id or uuid4().hex
+        append_chat_memory(
+            firebase_uid,
+            conversation_id,
+            {"role": "user", "content": payload.message},
+            redis_client,
+        )
+        append_chat_memory(
+            firebase_uid,
+            conversation_id,
+            {"role": "assistant", "content": safety_decision.response},
+            redis_client,
+        )
         return ChatResponse(reply=safety_decision.response, conversation_id=conversation_id)
 
     @firestore.transactional
@@ -180,20 +222,46 @@ def chat(request: Request, payload: ChatRequest, token: dict = Depends(require_v
     settings = Settings()
     validate_runtime_settings(settings)
     system_prompt = load_system_prompt()
+    history = get_chat_memory(firebase_uid, conversation_id, redis_client)
     try:
         reply = run_llm.remote(
             prompt=payload.message,
             system_prompt=system_prompt,
             model=settings.sambanova_model,
             action="generate",
+            history=history,
         )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     output_decision = assess_output(reply)
     if output_decision.response:
+        append_chat_memory(
+            firebase_uid,
+            conversation_id,
+            {"role": "user", "content": payload.message},
+            redis_client,
+        )
+        append_chat_memory(
+            firebase_uid,
+            conversation_id,
+            {"role": "assistant", "content": output_decision.response},
+            redis_client,
+        )
         return ChatResponse(reply=output_decision.response, conversation_id=conversation_id)
 
+    append_chat_memory(
+        firebase_uid,
+        conversation_id,
+        {"role": "user", "content": payload.message},
+        redis_client,
+    )
+    append_chat_memory(
+        firebase_uid,
+        conversation_id,
+        {"role": "assistant", "content": reply},
+        redis_client,
+    )
     return ChatResponse(reply=reply, conversation_id=conversation_id)
 
 
