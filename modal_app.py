@@ -35,13 +35,14 @@ from app.core.logging import RequestLogMiddleware  # noqa: E402
 from app.core.rate_limit import apply_rate_limiting, limiter, uid_limit_key  # noqa: E402
 from app.llm.sambanova import SambaNovaClient  # noqa: E402
 from app.safety.pipeline import assess_input, assess_output  # noqa: E402
-from app.schemas import ChatRequest, ChatResponse, ModelsResponse  # noqa: E402
+from app.schemas import ChatRequest, ChatResponse, ChatSessionDeleteRequest, ModelsResponse  # noqa: E402
 from app.settings import Settings, validate_runtime_settings  # noqa: E402
 from app.db import get_firestore  # noqa: E402
 from app.memory.redis_memory import (  # noqa: E402
     append_chat_memory,
     check_redis_health,
     create_redis_client,
+    delete_chat_session,
     get_chat_memory,
 )
 
@@ -174,25 +175,27 @@ def chat(request: Request, payload: ChatRequest, token: dict = Depends(require_v
         raise HTTPException(status_code=401, detail="Invalid authentication token")
 
     redis_client = getattr(request.app.state, "redis_client", None)
+    session_id = payload.session_id
 
     db = get_firestore()
     user_ref = db.collection("users").document(firebase_uid)
 
     safety_decision = assess_input(payload.message)
     if safety_decision.response:
-        conversation_id = payload.conversation_id or uuid4().hex
-        append_chat_memory(
-            firebase_uid,
-            conversation_id,
-            {"role": "user", "content": payload.message},
-            redis_client,
-        )
-        append_chat_memory(
-            firebase_uid,
-            conversation_id,
-            {"role": "assistant", "content": safety_decision.response},
-            redis_client,
-        )
+        conversation_id = session_id or payload.conversation_id or uuid4().hex
+        if session_id:
+            append_chat_memory(
+                firebase_uid,
+                session_id,
+                {"role": "user", "content": payload.message},
+                redis_client,
+            )
+            append_chat_memory(
+                firebase_uid,
+                session_id,
+                {"role": "assistant", "content": safety_decision.response},
+                redis_client,
+            )
         return ChatResponse(reply=safety_decision.response, conversation_id=conversation_id)
 
     @firestore.transactional
@@ -217,12 +220,15 @@ def chat(request: Request, payload: ChatRequest, token: dict = Depends(require_v
     transaction = db.transaction()
     reserve_quota(transaction)
 
-    conversation_id = payload.conversation_id or uuid4().hex
+    conversation_id = session_id or payload.conversation_id or uuid4().hex
 
     settings = Settings()
     validate_runtime_settings(settings)
     system_prompt = load_system_prompt()
-    history = get_chat_memory(firebase_uid, conversation_id, redis_client)
+    history = []
+    if session_id:
+        stored = get_chat_memory(firebase_uid, session_id, redis_client)
+        history = [{"role": item["role"], "content": item["content"]} for item in stored]
     try:
         reply = run_llm.remote(
             prompt=payload.message,
@@ -236,33 +242,56 @@ def chat(request: Request, payload: ChatRequest, token: dict = Depends(require_v
 
     output_decision = assess_output(reply)
     if output_decision.response:
+        if session_id:
+            append_chat_memory(
+                firebase_uid,
+                session_id,
+                {"role": "user", "content": payload.message},
+                redis_client,
+            )
+            append_chat_memory(
+                firebase_uid,
+                session_id,
+                {"role": "assistant", "content": output_decision.response},
+                redis_client,
+            )
+        return ChatResponse(reply=output_decision.response, conversation_id=conversation_id)
+
+    if session_id:
         append_chat_memory(
             firebase_uid,
-            conversation_id,
+            session_id,
             {"role": "user", "content": payload.message},
             redis_client,
         )
         append_chat_memory(
             firebase_uid,
-            conversation_id,
-            {"role": "assistant", "content": output_decision.response},
+            session_id,
+            {"role": "assistant", "content": reply},
             redis_client,
         )
-        return ChatResponse(reply=output_decision.response, conversation_id=conversation_id)
-
-    append_chat_memory(
-        firebase_uid,
-        conversation_id,
-        {"role": "user", "content": payload.message},
-        redis_client,
-    )
-    append_chat_memory(
-        firebase_uid,
-        conversation_id,
-        {"role": "assistant", "content": reply},
-        redis_client,
-    )
     return ChatResponse(reply=reply, conversation_id=conversation_id)
+
+
+@fastapi_app.delete("/chat/session")
+@limiter.limit("10/minute", key_func=uid_limit_key)
+def delete_session(
+    request: Request,
+    payload: ChatSessionDeleteRequest,
+    token: dict = Depends(require_verified_user),
+) -> dict:
+    firebase_uid = token.get("uid")
+    if not firebase_uid:
+        raise HTTPException(status_code=401, detail="Invalid authentication token")
+
+    if payload.user_id and payload.user_id != firebase_uid:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    redis_client = getattr(request.app.state, "redis_client", None)
+    if payload.session_id and redis_client:
+        delete_chat_session(firebase_uid, payload.session_id, redis_client)
+
+    return {"status": "ok"}
 
 
 @fastapi_app.get("/models", response_model=ModelsResponse)
@@ -279,6 +308,18 @@ def list_models(request: Request, token: dict = Depends(require_verified_user)) 
     allowed = set(settings.allowed_models or [settings.sambanova_model])
     filtered = [model for model in models if model in allowed]
     return ModelsResponse(models=filtered)
+
+
+@fastapi_app.get("/health/redis")
+async def redis_health() -> dict:
+    redis_client = getattr(fastapi_app.state, "redis_client", None)
+    if not redis_client:
+        return {"status": "unavailable"}
+    try:
+        await run_in_threadpool(check_redis_health, redis_client)
+        return {"status": "ok"}
+    except Exception:
+        return {"status": "unavailable"}
 
 
 @app.function(
