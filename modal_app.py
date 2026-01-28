@@ -29,7 +29,7 @@ _ensure_backend_on_path()
 from app.api.health import router as health_router  # noqa: E402
 from app.api.usage import router as usage_router  # noqa: E402
 from app.api.users import router as users_router  # noqa: E402
-from app.auth import require_verified_user  # noqa: E402
+from app.auth import require_user  # noqa: E402
 from app.core.cors import apply_cors  # noqa: E402
 from app.core.logging import RequestLogMiddleware  # noqa: E402
 from app.core.rate_limit import apply_rate_limiting, limiter, uid_limit_key  # noqa: E402
@@ -170,7 +170,7 @@ async def _startup() -> None:
 @fastapi_app.post("/chat", response_model=ChatResponse)
 @fastapi_app.post("/chat/message", response_model=ChatResponse)
 @limiter.limit("10/minute", key_func=uid_limit_key)
-def chat(request: Request, payload: ChatRequest, token: dict = Depends(require_verified_user)) -> ChatResponse:
+def chat(request: Request, payload: ChatRequest, token: dict = Depends(require_user)) -> ChatResponse:
     firebase_uid = token.get("uid")
     if not firebase_uid:
         raise HTTPException(status_code=401, detail="Invalid authentication token")
@@ -279,7 +279,7 @@ def chat(request: Request, payload: ChatRequest, token: dict = Depends(require_v
 def delete_session(
     request: Request,
     payload: ChatSessionDeleteRequest,
-    token: dict = Depends(require_verified_user),
+    token: dict = Depends(require_user),
 ) -> dict:
     firebase_uid = token.get("uid")
     if not firebase_uid:
@@ -297,7 +297,7 @@ def delete_session(
 
 @fastapi_app.get("/models", response_model=ModelsResponse)
 @limiter.limit("10/minute", key_func=uid_limit_key)
-def list_models(request: Request, token: dict = Depends(require_verified_user)) -> ModelsResponse:
+def list_models(request: Request, token: dict = Depends(require_user)) -> ModelsResponse:
     # Production check removed - models endpoint is now available in all environments
     settings = Settings()
     validate_runtime_settings(settings)
