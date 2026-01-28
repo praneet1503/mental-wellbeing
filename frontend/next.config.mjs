@@ -39,6 +39,7 @@ const scriptSrc = [
   "'unsafe-inline'",
   "https://vercel.live",
   "https://va.vercel-scripts.com",
+  "https://apis.google.com",
 ];
 
 const csp = [
@@ -48,7 +49,7 @@ const csp = [
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
   `script-src ${scriptSrc.join(" ")}${isProd ? "" : " 'unsafe-eval'"}`,
-  "frame-src https://vercel.live",
+  "frame-src https://vercel.live https://accounts.google.com https://*.firebaseapp.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -69,6 +70,7 @@ const nextConfig = {
         source: "/:path*",
         headers: [
           { key: "Content-Security-Policy", value: csp },
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },

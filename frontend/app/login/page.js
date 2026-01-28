@@ -9,6 +9,7 @@ import { auth } from "../../lib/firebase";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
+import { GoogleSignInButton } from "../../components/auth/GoogleSignInButton";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -55,6 +56,17 @@ export default function LoginPage() {
           <CardTitle>Log in to EchoMind</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Google Sign-In */}
+          <GoogleSignInButton />
+          
+          {/* Divider */}
+          <div className="relative flex items-center">
+            <div className="flex-grow border-t border-slate-300"></div>
+            <span className="mx-4 text-sm text-slate-500">or</span>
+            <div className="flex-grow border-t border-slate-300"></div>
+          </div>
+
+          {/* Email/Password Form */}
           <form className="space-y-4" onSubmit={handleLogin}>
             <div className="space-y-2">
               <label className="text-sm font-medium">Email</label>
