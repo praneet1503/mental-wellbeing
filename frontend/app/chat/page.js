@@ -106,6 +106,7 @@ export default function ChatPage() {
       systemPromptReady,
     [chatHistoryLoaded, llmReady, safetyContextReady, systemPromptReady, userProfileLoaded]
   );
+  const shouldShowOverlay = !userError && !isAppReady;
 
   if (!authReady) {
     return null;
@@ -122,7 +123,7 @@ export default function ChatPage() {
           <ChatMemoryPanel messages={messages} />
         </div>
       </ChatLayout>
-      <PreparingSpaceOverlay isAppReady={isAppReady} />
+      {shouldShowOverlay ? <PreparingSpaceOverlay isAppReady={isAppReady} /> : null}
     </>
   );
 }
