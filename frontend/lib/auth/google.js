@@ -71,6 +71,14 @@ export async function signInWithGoogle() {
           error: "An account already exists with this email using a different sign-in method.",
           errorCode,
         };
+
+      case "auth/unauthorized-domain":
+        return {
+          success: false,
+          error:
+            "This domain isn’t authorized for Google sign-in. Add it in Firebase Console → Authentication → Settings → Authorized domains.",
+          errorCode,
+        };
       
       default:
         return {
