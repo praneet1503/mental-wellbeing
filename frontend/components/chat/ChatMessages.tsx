@@ -15,7 +15,7 @@ export default function ChatMessages({ messages, isSending }: { messages: Messag
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
         {messages.length === 0 && (
           <div className="rounded-2xl border border-slate-200 bg-white px-6 py-8 text-center text-sm text-slate-500">
-            Ask anything to start the conversation.
+            This is a safe place.
           </div>
         )}
         {messages.map((message) => (

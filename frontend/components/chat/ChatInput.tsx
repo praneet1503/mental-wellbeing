@@ -32,7 +32,7 @@ export default function ChatInput({ onSend, isSending }: { onSend: (message: str
         <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
           <textarea
             className="min-h-[88px] w-full resize-none bg-transparent text-sm text-slate-900 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-            placeholder="Message EchoMind..."
+            placeholder="How do you feel today?"
             value={value}
             onChange={(event) => setValue(event.target.value)}
             onKeyDown={handleKeyDown}

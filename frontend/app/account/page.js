@@ -20,7 +20,7 @@ export default function AccountPage() {
         return;
       }
 
-      await ensureUser();
+      await ensureUser({ force: true });
     });
 
     return unsubscribe;

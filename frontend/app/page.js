@@ -1,16 +1,28 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../lib/firebase";
 
 export default function Home() {
     const shouldReduceMotion = useReducedMotion();
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const fadeInUp = {
         initial: shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 },
         whileInView: { opacity: 1, y: 0 },
         transition: { duration: shouldReduceMotion ? 0 : 0.5, ease: "easeOut" },
         viewport: { once: true, amount: 0.6 },
     };
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            setIsAuthenticated(Boolean(user));
+        });
+
+        return unsubscribe;
+    }, []);
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50">
@@ -22,20 +34,37 @@ export default function Home() {
                             EchoMind
                         </span>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <Link
-                            href="/login"
-                            className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
-                        >
-                            Log in
-                        </Link>
-                        <Link
-                            href="/signup"
-                            className="text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-full px-4 py-2 transition-colors"
-                        >
-                            Create account
-                        </Link>
-                    </div>
+                    {isAuthenticated ? (
+                        <div className="flex items-center gap-3">
+                            <Link
+                                href="/account"
+                                className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
+                            >
+                                Account
+                            </Link>
+                            <Link
+                                href="/chat"
+                                className="text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-full px-4 py-2 transition-colors"
+                            >
+                                Go to chat
+                            </Link>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-3">
+                            <Link
+                                href="/login"
+                                className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
+                            >
+                                Log in
+                            </Link>
+                            <Link
+                                href="/signup"
+                                className="text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-full px-4 py-2 transition-colors"
+                            >
+                                Create account
+                            </Link>
+                        </div>
+                    )}
                 </div>
             </header>
 
@@ -62,23 +91,43 @@ export default function Home() {
                         >
                             Designed to support reflection over time, not quick answers.
                         </motion.p>
-                        <motion.div
-                            className="flex flex-col sm:flex-row items-center justify-center gap-4"
-                            {...fadeInUp}
-                        >
-                            <Link
-                                href="/signup"
-                                className="text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-full px-6 py-3 transition-colors"
+                        {isAuthenticated ? (
+                            <motion.div
+                                className="flex flex-col sm:flex-row items-center justify-center gap-4"
+                                {...fadeInUp}
                             >
-                                Create your account
-                            </Link>
-                            <Link
-                                href="/login"
-                                className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
+                                <Link
+                                    href="/chat"
+                                    className="text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-full px-6 py-3 transition-colors"
+                                >
+                                    Go to chat
+                                </Link>
+                                <Link
+                                    href="/account"
+                                    className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
+                                >
+                                    Account
+                                </Link>
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                className="flex flex-col sm:flex-row items-center justify-center gap-4"
+                                {...fadeInUp}
                             >
-                                Log in
-                            </Link>
-                        </motion.div>
+                                <Link
+                                    href="/signup"
+                                    className="text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-full px-6 py-3 transition-colors"
+                                >
+                                    Create your account
+                                </Link>
+                                <Link
+                                    href="/login"
+                                    className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
+                                >
+                                    Log in
+                                </Link>
+                            </motion.div>
+                        )}
                         <motion.p className="mt-6 text-xs text-slate-500" {...fadeInUp}>
                             18+ only · Private by design · Encourages outside support when needed
                         </motion.p>

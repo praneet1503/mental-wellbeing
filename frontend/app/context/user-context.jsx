@@ -62,12 +62,16 @@ export function UserProvider({ children }) {
     return unsubscribe;
   }, [clearUser]);
 
-  const ensureUser = useCallback(async () => {
-    if (user || hasFetched || inFlight.current) {
+  const ensureUser = useCallback(async (options = {}) => {
+    const { force = false } = options || {};
+    if (inFlight.current) {
+      return;
+    }
+    if (!force && (user || hasFetched)) {
       return;
     }
 
-    if (typeof window !== "undefined") {
+    if (!force && typeof window !== "undefined") {
       const cached = sessionStorage.getItem(USER_CACHE_KEY);
       if (cached) {
         try {
