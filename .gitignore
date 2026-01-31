@@ -90,8 +90,6 @@ __pycache__/
 **/__pycache__/
 *.pyc
 
-
-blaxel_llm/model/llama-3.2-8b-instruct.Q4_K_M.gguf
+/blaxel_llm/
 /tmp_agent
 /blaxel_sandbox_tmp
-/blaxel_llm
