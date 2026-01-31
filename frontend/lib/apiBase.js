@@ -2,7 +2,7 @@ export function getApiBase() {
   const raw =
     process.env.NEXT_PUBLIC_API_BASE ||
     process.env.NEXT_PUBLIC_API_URL ||
-    'http://localhost:8000';
+    'https://praneetnrana--echomind-api-api.modal.run';
 
   // Next.js env vars are string-substituted at build time; keep this small and deterministic.
   let base = String(raw).trim();
