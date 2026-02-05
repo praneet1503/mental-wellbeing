@@ -29,8 +29,9 @@ AI-powered EchoMind app with a Next.js frontend and FastAPI backend.
 
 ### Backend
 Deploy the FastAPI app to a service like Render, Railway, or Fly.io.
+I use Modal for backend as i have credits to use there
 
 ---
 
-## Important Note
-This website is for informational and wellness purposes only. It is not a substitute for professional medical advice, diagnosis, or treatment. If you're experiencing a mental health crisis, please seek professional help immediately.
+## Legal
+>This website is for informational and wellness purposes only. It is not a substitute for professional medical advice, diagnosis, or treatment. If you're experiencing a mental health crisis, please seek professional help immediately.
