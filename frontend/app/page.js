@@ -129,7 +129,7 @@ export default function Home() {
                             </motion.div>
                         )}
                         <motion.p className="mt-6 text-xs text-slate-500" {...fadeInUp}>
-                            18+ only · Private by design · Encourages outside support when needed
+                             Private by design · Encourages outside support when needed
                         </motion.p>
                     </div>
                 </section>
